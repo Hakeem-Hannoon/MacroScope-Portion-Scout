@@ -12,6 +12,10 @@ Training, export, and prior fitting. The full model landscape with verified IDs,
 | `priors/fit_priors.py` | Fits κ / φ / h̄ per class from the manifest (MATH.md §4) | laptop, seconds |
 | `export/export_coreml.py` | Checkpoints → fp16 `.mlpackage` for iOS | laptop (macOS for verification) |
 
+## Colab
+
+Ready-to-run notebooks for every GPU step live in [`colab/`](colab/) — they mount Drive, clone this repo, and persist all artifacts (dataset, checkpoints, manifest, priors, exports) to the shared project Drive folder ([view-only](https://drive.google.com/drive/folders/1y1hDjkfHsazsOoe4LJjWKoEKj2bHKKjd)).
+
 ## Cloud (H100) run order
 
 1. `pip install -r requirements.txt`
