@@ -1,0 +1,11 @@
+{
+  "name": "@ppe/nutrition-etl",
+  "version": "0.1.0",
+  "description": "USDA FoodData Central + density tables → the on-device SQLite nutrient bundle.",
+  "license": "MIT",
+  "type": "module",
+  "main": "etl/build-bundle.mjs",
+  "scripts": {
+    "build": "node etl/cli.mjs"
+  }
+}

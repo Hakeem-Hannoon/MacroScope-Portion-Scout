@@ -1,0 +1,25 @@
+{
+  "name": "ppe-demo",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start --dev-client",
+    "ios": "expo run:ios",
+    "android": "expo run:android"
+  },
+  "dependencies": {
+    "@ppe/geometry": "file:../../packages/geometry",
+    "@ppe/pipeline": "file:../../packages/pipeline",
+    "expo": "~53.0.0",
+    "expo-portion-capture": "file:../../modules/expo-portion-capture",
+    "expo-status-bar": "~2.2.0",
+    "react": "19.0.0",
+    "react-native": "0.79.2",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/react": "~19.0.0",
+    "typescript": "^5.6.0"
+  }
+}

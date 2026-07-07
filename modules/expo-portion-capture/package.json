@@ -1,0 +1,14 @@
+{
+  "name": "expo-portion-capture",
+  "version": "0.1.0",
+  "description": "Expo native module: ARKit tap-hold-drag ruler capture for metric portion estimation.",
+  "license": "MIT",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "peerDependencies": {
+    "expo": "*",
+    "expo-modules-core": "*",
+    "react": "*",
+    "react-native": "*"
+  }
+}

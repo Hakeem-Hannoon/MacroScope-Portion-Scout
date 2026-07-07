@@ -1,0 +1,16 @@
+{
+  "name": "@ppe/pipeline",
+  "version": "0.1.0",
+  "description": "Capture payload → segment → classify → metric geometry → nutrients. Validated contracts, pluggable model adapters.",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ppe/geometry": "*",
+    "zod": "^3.25.0"
+  }
+}

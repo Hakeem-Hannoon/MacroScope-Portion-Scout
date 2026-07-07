@@ -1,0 +1,12 @@
+{
+  "name": "@ppe/geometry",
+  "version": "0.1.0",
+  "description": "Metric portion geometry: pinhole camera, ray-plane, plane homography, area/volume/mass, error budgets.",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

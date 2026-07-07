@@ -1,0 +1,40 @@
+# OS
+.DS_Store
+
+# Node / Expo / React Native
+node_modules/
+.expo/
+dist/
+*.tsbuildinfo
+ios/build/
+ios/Pods/
+android/build/
+android/.gradle/
+android/app/build/
+
+# Python (model training / ETL)
+.venv/
+__pycache__/
+*.egg-info/
+.ipynb_checkpoints/
+
+# Model weights & datasets — never commit; use scripts to fetch
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.tflite
+*.mlmodel
+*.mlpackage/
+*.gguf
+model/weights/
+model/data/
+nutrition/raw/
+
+# Built artifacts
+nutrition/*.sqlite
+nutrition/*.db
+
+# Env
+.env
+.env.*

@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "Portion Estimation Demo",
+    "slug": "ppe-demo",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "ios": {
+      "bundleIdentifier": "com.spotterlabs.ppedemo",
+      "infoPlist": {
+        "NSCameraUsageDescription": "The camera measures your meal with an AR ruler to estimate portions."
+      }
+    },
+    "android": {
+      "package": "com.spotterlabs.ppedemo"
+    }
+  }
+}

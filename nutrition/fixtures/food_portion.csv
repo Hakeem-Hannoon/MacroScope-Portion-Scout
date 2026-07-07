@@ -1,0 +1,4 @@
+"id","fdc_id","seq_num","amount","measure_unit_id","portion_description","modifier","gram_weight","data_points","footnote","min_year_acquired"
+"1","1001","1","1","1000","","","158","","",""
+"2","1001","2","0.5","1000","","","79","","",""
+"3","1002","1","1","1001","","","118","","",""
