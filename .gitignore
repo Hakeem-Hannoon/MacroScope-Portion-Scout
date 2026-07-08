@@ -12,6 +12,10 @@ android/build/
 android/.gradle/
 android/app/build/
 
+# Demo app: native projects are generated from app.json (expo prebuild / CNG)
+apps/demo/android/
+apps/demo/ios/
+
 # Python (model training / ETL)
 .venv/
 __pycache__/
