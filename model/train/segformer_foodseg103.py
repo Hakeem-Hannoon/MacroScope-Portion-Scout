@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import argparse
 
-import evaluate
 import numpy as np
 import torch
 from datasets import load_dataset
@@ -31,6 +30,46 @@ from transformers import (
 
 DATASET = "EduardoPacheco/FoodSeg103"
 NUM_LABELS = 104  # 103 ingredient classes + background
+
+
+def mean_iou_metrics(preds, labels, num_labels: int, ignore_index: int = 255) -> dict:
+    """Mean IoU + accuracy from integer label maps, computed directly in NumPy.
+
+    We deliberately do NOT use `evaluate.load("mean_iou")`: that metric is
+    fetched from the HF Hub at runtime and its current version validates inputs
+    as `Image` features, so it rejects the raw (H, W) class arrays a segmenter
+    produces — the run dies with "Predictions and/or references don't match the
+    expected format". A confusion matrix over all pixels is exact, dependency-
+    free, and version-stable:
+
+        IoU_c = TP_c / (TP_c + FP_c + FN_c)
+
+    averaged over the classes that actually appear (absent classes are NaN and
+    dropped by nanmean — matching mean_iou's semantics). Unlabeled pixels
+    (== ignore_index) are excluded first.
+    """
+    preds = np.asarray(preds).reshape(-1)
+    labels = np.asarray(labels).reshape(-1)
+    valid = (labels != ignore_index) & (labels >= 0) & (labels < num_labels)
+    preds, labels = preds[valid], labels[valid]
+    # One confusion matrix from the (true, pred) pixel pairs via a single bincount.
+    conf = np.bincount(
+        num_labels * labels.astype(np.int64) + preds.astype(np.int64),
+        minlength=num_labels ** 2,
+    ).reshape(num_labels, num_labels)
+    tp = np.diag(conf).astype(np.float64)
+    per_true = conf.sum(axis=1)  # ground-truth pixels per class (TP + FN)
+    per_pred = conf.sum(axis=0)  # predicted  pixels per class (TP + FP)
+    union = per_true + per_pred - tp
+    with np.errstate(divide="ignore", invalid="ignore"):
+        iou = np.where(union > 0, tp / union, np.nan)
+        acc = np.where(per_true > 0, tp / per_true, np.nan)
+    total = conf.sum()
+    return {
+        "mean_iou": float(np.nanmean(iou)) if np.isfinite(iou).any() else 0.0,
+        "mean_accuracy": float(np.nanmean(acc)) if np.isfinite(acc).any() else 0.0,
+        "overall_accuracy": float(tp.sum() / total) if total else 0.0,
+    }
 
 
 def main() -> None:
@@ -68,10 +107,9 @@ def main() -> None:
     )
 
     # 3. Metric: mean IoU across all classes — the exact number every public
-    #    checkpoint fails at. The two helpers below keep its computation from
-    #    OOMing on the full validation set.
-    metric = evaluate.load("mean_iou")
-
+    #    checkpoint fails at. Computed in NumPy (mean_iou_metrics above), not via
+    #    evaluate.load("mean_iou") whose Hub version rejects raw label arrays.
+    #    The two helpers below keep the computation from OOMing on the full set.
     def preprocess_logits_for_metrics(logits, labels):
         # Collapse (B, C, h, w) → (B, h, w) by arg-maxing on-device BEFORE the
         # Trainer accumulates predictions across the whole val set. Without
@@ -90,18 +128,7 @@ def main() -> None:
             size=labels.shape[-2:],
             mode="nearest",
         ).squeeze(1).long().numpy()
-        result = metric.compute(
-            predictions=preds,
-            references=labels,
-            num_labels=NUM_LABELS,
-            ignore_index=255,
-            reduce_labels=False,
-        )
-        return {
-            "mean_iou": result["mean_iou"],
-            "mean_accuracy": result["mean_accuracy"],
-            "overall_accuracy": result["overall_accuracy"],
-        }
+        return mean_iou_metrics(preds, labels, NUM_LABELS, ignore_index=255)
 
     # 4. Training config. Evaluate and checkpoint every epoch, keep the
     #    best-by-mIoU model at the end (save_total_limit=2 prunes the rest),
