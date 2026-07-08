@@ -33,7 +33,8 @@ __pycache__/
 *.mlpackage/
 *.gguf
 model/weights/
-model/data/
+model/data/n5k/
+model/data/nutrition5k/
 nutrition/raw/
 
 # Built artifacts
