@@ -56,6 +56,13 @@ COND_DIM = 3 + len(SCALE_SOURCES)
 
 
 class MealRegionDataset(Dataset):
+    """One training example per dish: the RGB crop, the measured-physics
+    conditioning vector, and the (log) mass/kcal targets.
+
+    The conditioning vector is deliberately only what the phone can measure at
+    capture time — nothing here reads the label — so the network learns exactly
+    the map it will run in production (MATH.md §3.1)."""
+
     def __init__(self, manifest: pd.DataFrame, image_size: int = 256, train: bool = True):
         self.rows = manifest.reset_index(drop=True)
         self.image_size = image_size
@@ -66,13 +73,25 @@ class MealRegionDataset(Dataset):
 
     def __getitem__(self, idx: int):
         row = self.rows.iloc[idx]
+        # Image → CHW float tensor in [0, 1]. A square resize is fine: the crop
+        # is already region-tight and the scale lives in `cond`, not in the
+        # pixel dimensions, so aspect distortion costs the model nothing.
         image = Image.open(row.image_path).convert("RGB").resize(
             (self.image_size, self.image_size)
         )
         x = torch.from_numpy(np.asarray(image)).permute(2, 0, 1).float() / 255.0
+        # Horizontal flip is the ONLY safe augmentation here — a plate has no
+        # canonical left/right, but vertical flips or rotations would fight the
+        # fixed overhead geometry the conditioning encodes.
         if self.train and torch.rand(1).item() < 0.5:
             x = torch.flip(x, dims=[2])
 
+        # Conditioning vector — layout must stay in lockstep with COND_DIM and
+        # the app-side encoder:
+        #   [ log(area_m2), height_m (or -1), has_height, one-hot(scale_source)[5] ]
+        # log(area) because mass scales ~area^(3/2), so the net sees a near-linear
+        # cue; when a capture had no depth, height is -1 and has_height=0, telling
+        # the model to lean on area alone rather than trust a bogus height.
         height = float(row.get("height_m", -1) or -1)
         has_height = 1.0 if height > 0 else 0.0
         source = str(row.get("scale_source", "lidar"))
@@ -81,6 +100,9 @@ class MealRegionDataset(Dataset):
             [math.log(max(row.area_m2, 1e-6)), max(height, -1.0), has_height, *one_hot],
             dtype=torch.float32,
         )
+        # Targets in log space: mass/kcal span two orders of magnitude, so what
+        # matters is relative error. SmoothL1 on logs ≈ penalizing ratio error,
+        # which is exactly the currency the MAPE benchmark is scored in.
         target = torch.tensor(
             [math.log(max(row.mass_g, 1.0)), math.log(max(row.kcal, 1.0))],
             dtype=torch.float32,
@@ -89,33 +111,54 @@ class MealRegionDataset(Dataset):
 
 
 class FiLM(nn.Module):
+    """Feature-wise Linear Modulation (Perez et al., 2018): the measured physics
+    predicts a per-channel scale (γ) and shift (β) that rescale the visual
+    features. This is where "double the metric area ⇒ ~double the mass" gets
+    wired into the network — the scale multiplies the features instead of being
+    concatenated and merely hoped for."""
+
     def __init__(self, cond_dim: int, feature_dim: int):
         super().__init__()
+        # Tiny MLP mapping the conditioning vector → 2·feature_dim, later split
+        # into (γ, β), one pair per backbone channel.
         self.net = nn.Sequential(
             nn.Linear(cond_dim, 128), nn.SiLU(), nn.Linear(128, 2 * feature_dim)
         )
 
     def forward(self, features: torch.Tensor, cond: torch.Tensor) -> torch.Tensor:
         gamma, beta = self.net(cond).chunk(2, dim=-1)
+        # (1 + γ) so that γ=0 is the identity: modulation starts as a no-op and
+        # learns to deviate, which trains more stably than scaling from zero.
         return features * (1 + gamma) + beta
 
 
 class ScaleConditionedMassRegressor(nn.Module):
+    """backbone → FiLM(physics) → MLP head → [log_mass, log_kcal].
+
+    Any timm feature extractor works as the backbone (num_classes=0 yields
+    pooled features); swap it via --backbone for different on-device targets
+    (fastvit_t8 for the Apple Neural Engine, efficientnet-lite for LiteRT)."""
+
     def __init__(self, backbone: str = "mobilenetv3_large_100"):
         super().__init__()
         self.backbone = timm.create_model(backbone, pretrained=True, num_classes=0)
         feature_dim = self.backbone.num_features
         self.film = FiLM(COND_DIM, feature_dim)
+        # Shared head: mass and kcal ride the same modulated features and only
+        # split at the final Linear, so the kcal output is a cheap auxiliary task
+        # that regularizes the shared representation.
         self.head = nn.Sequential(
             nn.Linear(feature_dim, 256), nn.SiLU(), nn.Dropout(0.1), nn.Linear(256, 2)
         )
 
     def forward(self, image: torch.Tensor, cond: torch.Tensor) -> torch.Tensor:
-        h = self.backbone(image)
-        return self.head(self.film(h, cond))
+        h = self.backbone(image)              # pooled visual features, R^feature_dim
+        return self.head(self.film(h, cond))  # modulate by physics, then regress
 
 
 def mape(pred_log: torch.Tensor, true_log: torch.Tensor) -> float:
+    """Mean absolute percentage error, evaluated back in linear grams/kcal. The
+    model emits logs, so exp() first, then mean(|pred − true| / true)."""
     pred = torch.exp(pred_log)
     true = torch.exp(true_log)
     return (torch.abs(pred - true) / true).mean().item()
@@ -131,6 +174,10 @@ def main() -> None:
     parser.add_argument("--output", default="out/mass-regressor.pt")
     args = parser.parse_args()
 
+    # 1. Data. Split on the manifest's `split` column — Nutrition5k's official
+    #    train/test dish ids — so no dish leaks across the boundary. Images are
+    #    read lazily per batch, so `image_path` must resolve to local disk (the
+    #    Colab notebook stages the dataset there; reading off Drive aborts).
     manifest = pd.read_csv(args.manifest)
     train_df = manifest[manifest.split == "train"]
     test_df = manifest[manifest.split == "test"]
@@ -147,23 +194,30 @@ def main() -> None:
         num_workers=4,
     )
 
+    # 2. Model + optimization. AdamW with cosine decay across the whole run;
+    #    SmoothL1 (Huber) on the log-targets shrugs off the occasional mislabeled
+    #    dish instead of letting one outlier dominate the gradient.
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = ScaleConditionedMassRegressor(args.backbone).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
     loss_fn = nn.SmoothL1Loss()
 
+    # 3. Train. One pass per epoch, then score MAPE on the held-out split and
+    #    checkpoint only when mass MAPE improves — so the best model survives
+    #    even if later epochs overfit or the Colab runtime disconnects mid-run.
     best_mape = float("inf")
     for epoch in range(args.epochs):
         model.train()
         for image, cond, target in train_loader:
             image, cond, target = image.to(device), cond.to(device), target.to(device)
-            loss = loss_fn(model(image, cond), target)
+            loss = loss_fn(model(image, cond), target)   # SmoothL1 over [log_mass, log_kcal]
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
         scheduler.step()
 
+        # Evaluate on the test split in linear grams/kcal (mape() exp's the logs).
         model.eval()
         mass_mapes, kcal_mapes = [], []
         with torch.no_grad():
@@ -174,7 +228,7 @@ def main() -> None:
         mass_mape = float(np.mean(mass_mapes))
         kcal_mape = float(np.mean(kcal_mapes))
         print(f"epoch {epoch + 1}: mass MAPE {mass_mape:.3f}, kcal MAPE {kcal_mape:.3f}")
-        if mass_mape < best_mape:
+        if mass_mape < best_mape:   # new best → save (backbone name travels with the weights)
             best_mape = mass_mape
             Path(args.output).parent.mkdir(parents=True, exist_ok=True)
             torch.save(

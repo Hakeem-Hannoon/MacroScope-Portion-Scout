@@ -106,6 +106,10 @@ def main() -> None:
     parser.add_argument("--out", default="out/n5k-manifest.csv")
     args = parser.parse_args()
 
+    # Load the labels once (dish_id → mass/kcal) and the official split
+    # assignment, then walk every overhead capture. `overhead` holds ~5k
+    # per-dish folders: iterate it on LOCAL disk — over Drive's FUSE mount this
+    # listing plus the per-dish reads below abort (Errno 103).
     root = Path(args.root)
     dishes = load_dish_metadata(root / "metadata")
     splits = load_splits(root / "dish_ids" / "splits")
@@ -118,13 +122,20 @@ def main() -> None:
         meta = dishes.get(dish_id)
         rgb = dish_dir / "rgb.png"
         depth = dish_dir / "depth_raw.png"
+        # Skip any dish missing a label or either capture — nothing to train on.
         if meta is None or not rgb.exists() or not depth.exists():
             skipped += 1
             continue
+        # Depth map → metric geometry (plane fit → height field → area/volume).
+        # None means the fit failed (too few valid pixels); also drop trivially
+        # light dishes, whose mass labels are unreliable.
         geometry = analyze_depth(depth)
         if geometry is None or meta["mass_g"] <= 1:
             skipped += 1
             continue
+        # One manifest row = one training example. image_path is absolute so it
+        # resolves wherever the dataset was staged; scale_source is "lidar"
+        # because these are RealSense depth captures (the app tags its own rows).
         rows.append(
             {
                 "dish_id": dish_id,
@@ -137,6 +148,9 @@ def main() -> None:
             }
         )
 
+    # Write the manifest — the one CSV every downstream step reads (fit_priors.py
+    # and mass_regressor_nutrition5k.py). Field names come from the first row, so
+    # every row must carry the same keys.
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", newline="") as f:

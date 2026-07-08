@@ -43,6 +43,10 @@ def main() -> None:
     parser.add_argument("--push-to-hub", action="store_true")
     args = parser.parse_args()
 
+    # 1. Data. FoodSeg103 streams from the Hub. The processor normalizes the
+    #    images and aligns the label maps; do_reduce_labels=False keeps class 0
+    #    as background (NUM_LABELS already counts it). with_transform runs this
+    #    lazily per batch, so the whole set never decodes up front.
     dataset = load_dataset(DATASET)
     processor = SegformerImageProcessor(do_reduce_labels=False)
 
@@ -54,12 +58,18 @@ def main() -> None:
     train_ds = dataset["train"].with_transform(transform)
     val_ds = dataset["validation"].with_transform(transform)
 
+    # 2. Model. Load the pretrained MiT backbone but swap in a fresh head sized
+    #    to our 104 classes — ignore_mismatched_sizes drops the incompatible
+    #    pretrained head instead of erroring on the shape mismatch.
     model = SegformerForSemanticSegmentation.from_pretrained(
         args.model,
         num_labels=NUM_LABELS,
         ignore_mismatched_sizes=True,
     )
 
+    # 3. Metric: mean IoU across all classes — the exact number every public
+    #    checkpoint fails at. The two helpers below keep its computation from
+    #    OOMing on the full validation set.
     metric = evaluate.load("mean_iou")
 
     def preprocess_logits_for_metrics(logits, labels):
@@ -93,6 +103,9 @@ def main() -> None:
             "overall_accuracy": result["overall_accuracy"],
         }
 
+    # 4. Training config. Evaluate and checkpoint every epoch, keep the
+    #    best-by-mIoU model at the end (save_total_limit=2 prunes the rest),
+    #    fp16 on GPU for throughput.
     training_args = TrainingArguments(
         output_dir=args.output,
         learning_rate=args.lr,
@@ -111,6 +124,9 @@ def main() -> None:
         push_to_hub=args.push_to_hub,
     )
 
+    # 5. Train, then persist. save_model writes the weights; the metric files
+    #    below are written separately so the result row never depends on a
+    #    checkpoint dir that Drive's FUSE layer may not have synced.
     trainer = Trainer(
         model=model,
         args=training_args,
