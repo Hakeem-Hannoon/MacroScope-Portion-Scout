@@ -14,6 +14,11 @@ import { csvRecords } from "./csv.mjs";
  * (g/mL) derived from volumetric FNDDS portion weights where available
  * (MATH.md §5). FDC documentation flags portion-derived densities as
  * approximate, so each carries a `density_source` for auditability.
+ *
+ * Also emits a `shape_priors` table (κ/φ/h̄ per food class, MATH.md §4): seeded
+ * from priors.json (model/priors/fit_priors.py) when passed, else a single
+ * mound default that matches the pipeline's placeholder. Consumed by
+ * openNutrientStore in ./nutrient-store.mjs.
  */
 
 /** FDC nutrient.id → bundle column. */
@@ -47,7 +52,15 @@ const DENSITY_MAX = 2.0;
 
 const DEFAULT_DATA_TYPES = ["foundation_food", "sr_legacy_food", "survey_fndds_food"];
 
-export function buildBundle({ fdcDir, out, dataTypes = DEFAULT_DATA_TYPES }) {
+/**
+ * Fallback shape prior when no per-class fit is supplied. Mirrors the pipeline's
+ * DEFAULT_KAPPA / DEFAULT_MOUND_PHI (packages/pipeline/src/estimate.ts) so an
+ * un-fitted bundle behaves exactly like today's placeholder (MATH.md §4b/§4c);
+ * replaced per class by priors.json once notebook 03 finishes.
+ */
+const DEFAULT_GLOBAL_PRIOR = { kind: "mound", kappa: 0.55, phi: 0.58, h_bar_m: null, samples: 0 };
+
+export function buildBundle({ fdcDir, out, dataTypes = DEFAULT_DATA_TYPES, priors = null }) {
   const read = (name) => csvRecords(readFileSync(join(fdcDir, name), "utf8"));
 
   const foods = read("food.csv").filter((f) => dataTypes.includes(f.data_type));
@@ -99,6 +112,15 @@ export function buildBundle({ fdcDir, out, dataTypes = DEFAULT_DATA_TYPES }) {
       calcium100 REAL, iron100 REAL,
       density_g_per_ml REAL,
       density_source TEXT
+    );
+    CREATE TABLE IF NOT EXISTS shape_priors (
+      class TEXT PRIMARY KEY,
+      kind TEXT NOT NULL,
+      kappa REAL,
+      phi REAL,
+      h_bar_m REAL,
+      samples INTEGER,
+      source TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
   `);
@@ -155,6 +177,32 @@ export function buildBundle({ fdcDir, out, dataTypes = DEFAULT_DATA_TYPES }) {
     );
     insertFts?.run(Number(food.fdc_id), food.description);
   }
+
+  // Shape priors (κ/φ/h̄ per class, MATH.md §4). From priors.json when supplied,
+  // else a single mound default matching the pipeline placeholder. Foods map to
+  // the `_global` prior until a per-food class table exists (roadmap).
+  const insertShape = db.prepare(
+    "INSERT OR REPLACE INTO shape_priors (class, kind, kappa, phi, h_bar_m, samples, source) VALUES (?, ?, ?, ?, ?, ?, ?)",
+  );
+  let shapePriors = 0;
+  for (const [cls, p] of Object.entries(priors ?? {})) {
+    insertShape.run(
+      cls,
+      p.kind ?? "mound",
+      p.kappa ?? null,
+      p.phi ?? null,
+      p.h_bar_m ?? null,
+      p.samples ?? null,
+      "nutrition5k_fit",
+    );
+    shapePriors++;
+  }
+  if (!priors || !("_global" in priors)) {
+    const g = DEFAULT_GLOBAL_PRIOR;
+    insertShape.run("_global", g.kind, g.kappa, g.phi, g.h_bar_m, g.samples, "default");
+    shapePriors++;
+  }
+
   const setMeta = db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)");
   setMeta.run("generated_at", new Date().toISOString());
   setMeta.run("data_types", dataTypes.join(","));
@@ -163,14 +211,22 @@ export function buildBundle({ fdcDir, out, dataTypes = DEFAULT_DATA_TYPES }) {
   db.exec("COMMIT");
   db.close();
 
-  return { foods: foods.length, withDensity, fts };
+  return { foods: foods.length, withDensity, shapePriors, fts };
 }
 
 /** Read access to a built bundle — mirrors what the app queries on device. */
 export function openBundle(path) {
   const db = new DatabaseSync(path, { readOnly: true });
   const hasFts = db.prepare("SELECT value FROM meta WHERE key = 'fts'").get()?.value === "1";
+  // Older bundles predate shape_priors; degrade gracefully rather than throw.
+  let hasShape = true;
+  try {
+    db.prepare("SELECT 1 FROM shape_priors LIMIT 1").get();
+  } catch {
+    hasShape = false;
+  }
   const byId = db.prepare("SELECT * FROM foods WHERE fdc_id = ?");
+  const byDesc = db.prepare("SELECT * FROM foods WHERE description = ? COLLATE NOCASE LIMIT 1");
   const byFts = hasFts
     ? db.prepare(
         "SELECT f.* FROM foods_fts JOIN foods f ON f.fdc_id = foods_fts.rowid WHERE foods_fts MATCH ? ORDER BY rank LIMIT ?",
@@ -179,11 +235,14 @@ export function openBundle(path) {
   const byLike = db.prepare(
     "SELECT * FROM foods WHERE description LIKE ? ORDER BY length(description) LIMIT ?",
   );
+  const byShape = hasShape ? db.prepare("SELECT * FROM shape_priors WHERE class = ?") : null;
   return {
     count: () => db.prepare("SELECT COUNT(*) AS n FROM foods").get().n,
     get: (fdcId) => byId.get(fdcId) ?? null,
+    getByDescription: (description) => byDesc.get(String(description)) ?? null,
     search: (term, limit = 10) =>
       byFts ? byFts.all(term, limit) : byLike.all(`%${term}%`, limit),
+    shapePrior: (className) => byShape?.get(className) ?? null,
     close: () => db.close(),
   };
 }

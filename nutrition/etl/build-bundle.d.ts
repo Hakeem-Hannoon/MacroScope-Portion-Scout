@@ -1,6 +1,7 @@
 export interface BundleStats {
   foods: number;
   withDensity: number;
+  shapePriors: number;
   fts: boolean;
 }
 
@@ -24,15 +25,35 @@ export interface FoodRow {
   density_source: string | null;
 }
 
+/** One row of the shape_priors table (κ/φ/h̄ per food class, MATH.md §4). */
+export interface ShapePriorRow {
+  class: string;
+  kind: string;
+  kappa: number | null;
+  phi: number | null;
+  h_bar_m: number | null;
+  samples: number | null;
+  source: string;
+}
+
+/** Per-class shape priors, keyed by class — the fit_priors.py (priors.json) shape. */
+export type PriorsInput = Record<
+  string,
+  { kind?: string; kappa?: number; phi?: number; h_bar_m?: number; samples?: number }
+>;
+
 export function buildBundle(options: {
   fdcDir: string;
   out: string;
   dataTypes?: string[];
+  priors?: PriorsInput | null;
 }): BundleStats;
 
 export function openBundle(path: string): {
   count(): number;
   get(fdcId: number): FoodRow | null;
+  getByDescription(description: string): FoodRow | null;
   search(term: string, limit?: number): FoodRow[];
+  shapePrior(className: string): ShapePriorRow | null;
   close(): void;
 };

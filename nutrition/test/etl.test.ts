@@ -19,6 +19,8 @@ describe("nutrient bundle ETL", () => {
     // Rice has two volumetric (cup) portions; the banana portion ("medium")
     // carries no volume, so only rice gets a density.
     expect(stats.withDensity).toBe(1);
+    // No priors passed → a single default _global shape prior is seeded.
+    expect(stats.shapePriors).toBe(1);
   });
 
   it("derives density from volumetric portion weights (MATH.md §5)", () => {
@@ -41,6 +43,37 @@ describe("nutrient bundle ETL", () => {
     expect(hits.length).toBeGreaterThan(0);
     expect(hits[0]!.fdc_id).toBe(1001);
     expect(bundle.count()).toBe(2);
+    bundle.close();
+  });
+
+  it("seeds a default _global shape prior matching the pipeline placeholder (MATH.md §4)", () => {
+    const bundle = openBundle(bundlePath); // built above with no priors
+    const g = bundle.shapePrior("_global");
+    expect(g).not.toBeNull();
+    expect(g!.kind).toBe("mound");
+    expect(g!.kappa).toBe(0.55); // == DEFAULT_KAPPA in @ppe/pipeline
+    expect(g!.phi).toBe(0.58); // == DEFAULT_MOUND_PHI
+    expect(g!.source).toBe("default");
+    bundle.close();
+  });
+
+  it("ingests fitted priors.json into the shape_priors table", () => {
+    const out = join(workDir, "with-priors.sqlite");
+    const stats = buildBundle({
+      fdcDir: fixtures,
+      out,
+      // the shape of model/priors/fit_priors.py output
+      priors: {
+        _global: { kappa: 0.42, phi: 0.61, h_bar_m: 0.018, samples: 3200 },
+        rice: { kappa: 0.5, phi: 0.7, h_bar_m: 0.02, samples: 120 },
+      },
+    });
+    // both supplied classes; the given _global replaces the default (no extra row)
+    expect(stats.shapePriors).toBe(2);
+    const bundle = openBundle(out);
+    expect(bundle.shapePrior("_global")!.kappa).toBe(0.42);
+    expect(bundle.shapePrior("_global")!.source).toBe("nutrition5k_fit");
+    expect(bundle.shapePrior("rice")!.phi).toBe(0.7);
     bundle.close();
   });
 });

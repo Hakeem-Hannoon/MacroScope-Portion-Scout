@@ -31,24 +31,27 @@ Worked from the fixtures: rice, 1 cup → 158 g → $158 / (236.588\times1) =$ *
 
 ## The SQLite schema (what actually ships)
 
-One denormalized table `foods` (PRIMARY KEY `fdc_id`): `description`, `data_type`, the `*100` nutrient columns (`kcal100`, `protein100`, …, `iron100`), plus `density_g_per_ml` and `density_source` (both nullable). A `meta` table records `generated_at`, `data_types`, `fts`, `source`. And a **full‑text search** index `foods_fts` (SQLite FTS5, external‑content over `description`) — wrapped in a try/catch so builds without fts5 fall back to `LIKE`. `openBundle()` is the reference reader (`get`, `search`, `count`) that mirrors what the on‑device adapter will do.
+Four tables. **`foods`** (PRIMARY KEY `fdc_id`): `description`, `data_type`, the `*100` nutrient columns (`kcal100`, `protein100`, …, `iron100`), plus `density_g_per_ml` and `density_source` (both nullable). **`shape_priors`** (`class, kind, kappa, phi, h_bar_m, samples, source`): κ/φ/h̄ per class ([[Math 4 - Volume Mass and Nutrients]]), seeded from `priors.json` when built with `--priors`, else a single mound `_global` default matching the pipeline placeholder. **`meta`** records `generated_at`, `data_types`, `fts`, `source`. And a **full‑text search** index `foods_fts` (SQLite FTS5, external‑content over `description`) — wrapped in a try/catch so builds without fts5 fall back to `LIKE`. `openBundle()` is the low‑level reader (`get`, `getByDescription`, `search`, `shapePrior`, `count`).
 
 ## The CLI
 
 ```
-node etl/cli.mjs --fdc-dir <dir-with-the-5-csvs> [--out nutrient-bundle.sqlite]
+node etl/cli.mjs --fdc-dir <dir-with-the-5-csvs> [--out nutrient-bundle.sqlite] [--priors priors.json]
 ```
-(or `npm run etl:bundle -- --fdc-dir <dir>`). It prints `N foods, M with portion-derived density, fts=<bool>`.
+(or `npm run etl:bundle -- --fdc-dir <dir>`). It prints `N foods, M with portion-derived density, K shape priors, fts=<bool>`.
 
 ## How it connects to the pipeline
 
-The pipeline's `NutrientStore.lookup(label)` returns a `FoodRecord { label, per100, densityGPerMl, shape }` ([[The Pipeline]]). The bundle's columns line up one‑to‑one: `kcal100`→`per100.kcal`, `density_g_per_ml`→`densityGPerMl`, `description`→`label`, the micro columns→`per100.micros`. The estimator then uses exactly two things downstream: `massG(volumeMl, densityGPerMl)` and `nutrientsForMassG(per100, mass)` — i.e. the bundle feeds precisely the [[Math 4 - Volume Mass and Nutrients]] §5–6 math.
+The pipeline's `NutrientStore.lookup(label)` returns a `FoodRecord { label, per100, densityGPerMl, shape }` ([[The Pipeline]]). The bundle's columns line up one‑to‑one: `kcal100`→`per100.kcal`, `density_g_per_ml`→`densityGPerMl`, `description`→`label`, the micro columns→`per100.micros`, and the `_global` `shape_priors` row→`shape`. **`openNutrientStore(path, { aliases })`** (`etl/nutrient-store.mjs`) is the concrete `NutrientStore` doing exactly this — resolving a label (alias map → exact description → full‑text best hit) to a `FoodRecord`, or `null` on a miss. The estimator then uses two things downstream: `massG(volumeMl, densityGPerMl)` and `nutrientsForMassG(per100, mass)` — the bundle feeds precisely the [[Math 4 - Volume Mass and Nutrients]] §5–6 math.
 
-## Three honest gaps (per [[STATUS]])
+## What's done, what's left
 
-1. **Docs vs. code:** `nutrition/README.md` describes a *target* schema (separate `foods`/`densities`/`shape_priors` tables); the shipped code produces the single denormalized `foods` table above. The `.d.ts` `FoodRow` is the authoritative shape.
-2. **No on‑device adapter yet.** The only concrete `NutrientStore` today is the in‑memory mock; the real `expo-sqlite` adapter (and the *label → FDC row* mapping table — the quality‑critical artifact) is [[Roadmap and Next Steps]] item P2.
-3. **No `shape` column yet.** `FoodRecord.shape` (κ/φ/h̄) awaits the `priors.json` fit ([[Shape Priors and Nutrition5k]]); until then the pipeline falls back to a default mound. The "never invent nutrition" contract still holds — `lookup` returns `null` on a miss and the estimator emits null nutrients rather than fabricating them.
+- ✅ **Schema + reference store shipped.** The `shape_priors` table and a concrete Node `NutrientStore` (`openNutrientStore`) now exist, tested for resolution, density→mass→nutrition, and the null‑on‑miss rule. `nutrition/README.md` is reconciled with the shipped schema.
+- ⬜ **On‑device adapter.** The Node store is the reference; the real **`expo-sqlite`** `NutrientStore` for the app is still [[Roadmap and Next Steps]] item P2.
+- ⬜ **Per‑food shape class.** Every food currently uses the `_global` prior; a per‑food *class* map (plus the fitted per‑class κ/φ/h̄ from [[Shape Priors and Nutrition5k]]) will refine it.
+- ⬜ **Label → FDC‑row map.** The store accepts a curated `aliases` map (the "quality‑critical artifact"); building the real one is pending.
+
+The "never invent nutrition" contract holds throughout — `lookup` returns `null` on a miss and the estimator emits null nutrients rather than fabricating them.
 
 ## Related
 - [[The Pipeline]] · [[Math 4 - Volume Mass and Nutrients]] · [[Shape Priors and Nutrition5k]] · [[Testing]] · [[MODELS]] · [[Roadmap and Next Steps]]
