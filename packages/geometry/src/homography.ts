@@ -7,14 +7,14 @@ import {
   mat3Mul,
   mat3MulVec,
   dist2d,
-} from "./vec.js";
+} from "./vec";
 import {
   type Intrinsics,
   type WorldToCamera,
   intrinsicsToMat3,
   projectPoint,
-} from "./camera.js";
-import type { PlaneBasis } from "./plane.js";
+} from "./camera";
+import type { PlaneBasis } from "./plane";
 
 /**
  * Homography from metric plane coordinates (x, y) to image pixels

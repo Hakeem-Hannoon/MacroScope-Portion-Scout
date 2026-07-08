@@ -1,4 +1,0 @@
-/Users/hakeem/Developer/physics-powered-portion-estimation/modules/expo-portion-capture/android/src/main/java/expo/modules/portioncapture/DisplayRotationHelper.kt
-/Users/hakeem/Developer/physics-powered-portion-estimation/modules/expo-portion-capture/android/src/main/java/expo/modules/portioncapture/ARCaptureActivity.kt
-/Users/hakeem/Developer/physics-powered-portion-estimation/modules/expo-portion-capture/android/src/main/java/expo/modules/portioncapture/BackgroundRenderer.kt
-/Users/hakeem/Developer/physics-powered-portion-estimation/modules/expo-portion-capture/android/src/main/java/expo/modules/portioncapture/PortionCaptureModule.kt

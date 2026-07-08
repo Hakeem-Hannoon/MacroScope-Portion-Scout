@@ -1,5 +1,5 @@
 import type { NutrientsPer100g } from "@ppe/geometry";
-import type { CapturePayload } from "./contracts.js";
+import type { CapturePayload } from "./contracts";
 
 /** One segmented food region; polygon in pixel coordinates of the stored image. */
 export interface Region {

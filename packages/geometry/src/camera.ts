@@ -11,8 +11,8 @@ import {
   scale,
   dot,
   normalize,
-} from "./vec.js";
-import type { Plane } from "./plane.js";
+} from "./vec";
+import type { Plane } from "./plane";
 
 /**
  * Pinhole intrinsics in pixels, valid for one specific image resolution.

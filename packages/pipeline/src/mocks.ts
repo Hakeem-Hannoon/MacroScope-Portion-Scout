@@ -5,7 +5,7 @@ import type {
   NutrientStore,
   Region,
   Segmenter,
-} from "./adapters.js";
+} from "./adapters";
 
 /** Test/demo segmenter that returns fixed regions. */
 export class FixedSegmenter implements Segmenter {

@@ -38,7 +38,7 @@ import {
   volumeAreaHeightM3,
   volumeShapePriorM3,
   worldToCamera,
-} from "../src/index.js";
+} from "../src/index";
 
 /** Build a CV-convention camera pose looking from `center` toward `target`. */
 function lookAtPoseCV(center: Vec3, target: Vec3, upHint: Vec3): CameraPose {

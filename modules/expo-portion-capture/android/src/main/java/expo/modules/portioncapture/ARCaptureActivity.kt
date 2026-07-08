@@ -59,7 +59,7 @@ class ARCaptureActivity : Activity(), GLSurfaceView.Renderer {
   }
 
   private lateinit var glView: GLSurfaceView
-  private lateinit var overlay: RulerOverlay
+  private lateinit var rulerOverlay: RulerOverlay
   private lateinit var measureLabel: TextView
   private lateinit var hintLabel: TextView
   private lateinit var shutterButton: Button
@@ -107,7 +107,7 @@ class ARCaptureActivity : Activity(), GLSurfaceView.Renderer {
       renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
       setOnTouchListener { _, event -> onCameraTouch(event) }
     }
-    overlay = RulerOverlay(this)
+    rulerOverlay = RulerOverlay(this)
     rotationHelper = DisplayRotationHelper(this)
     setContentView(buildLayout())
     updateHint(false)
@@ -383,7 +383,7 @@ class ARCaptureActivity : Activity(), GLSurfaceView.Renderer {
         }
       }
     }
-    overlay.publish(segments)
+    rulerOverlay.publish(segments)
 
     val enabled = !requireStroke ||
       strokes.any { it.kind == "horizontal" && it.lengthM >= minStrokeLengthM }
@@ -575,7 +575,7 @@ class ARCaptureActivity : Activity(), GLSurfaceView.Renderer {
 
     return FrameLayout(this).apply {
       addView(glView, FrameLayout.LayoutParams(-1, -1))
-      addView(overlay, FrameLayout.LayoutParams(-1, -1))
+      addView(rulerOverlay, FrameLayout.LayoutParams(-1, -1))
       addView(measureLabel, params(Gravity.TOP or Gravity.CENTER_HORIZONTAL, marginTop = 40))
       addView(hintLabel, params(Gravity.TOP or Gravity.CENTER_HORIZONTAL, marginTop = 76))
       addView(shutterButton, params(Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL, marginBottom = 32))

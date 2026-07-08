@@ -31,14 +31,14 @@ import {
   type EstimateResult,
   capturePayloadSchema,
   estimateResultSchema,
-} from "./contracts.js";
+} from "./contracts";
 import type {
   Classifier,
   DepthProvider,
   FoodRecord,
   NutrientStore,
   Segmenter,
-} from "./adapters.js";
+} from "./adapters";
 
 export interface EstimateDeps {
   segmenter: Segmenter;

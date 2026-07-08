@@ -1,5 +1,5 @@
-import { type Mat3, type Vec2 } from "./vec.js";
-import { applyHomography } from "./homography.js";
+import { type Mat3, type Vec2 } from "./vec";
+import { applyHomography } from "./homography";
 
 /** Shoelace polygon area (MATH.md §3.1). Vertices in order, any winding. */
 export function polygonArea(pts: Vec2[]): number {

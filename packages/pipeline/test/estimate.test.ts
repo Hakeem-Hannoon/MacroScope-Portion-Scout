@@ -14,7 +14,7 @@ import {
   FixedSegmenter,
   InMemoryNutrientStore,
   estimateMeal,
-} from "../src/index.js";
+} from "../src/index";
 
 /**
  * Synthetic nadir capture: ARKit camera 45 cm straight above the table,

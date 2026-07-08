@@ -7,7 +7,7 @@ import {
   dot,
   cross,
   normalize,
-} from "./vec.js";
+} from "./vec";
 
 /** The plane { X : n·X = d0 } with unit normal n. MATH.md §2.2. */
 export interface Plane {
