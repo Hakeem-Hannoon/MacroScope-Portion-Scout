@@ -17,6 +17,7 @@ ExecuTorch .pte via `fromCustomModel` in react-native-executorch.
 from __future__ import annotations
 
 import argparse
+import os
 
 import numpy as np
 import torch
@@ -27,6 +28,7 @@ from transformers import (
     Trainer,
     TrainingArguments,
 )
+from transformers.trainer_utils import get_last_checkpoint
 
 DATASET = "EduardoPacheco/FoodSeg103"
 NUM_LABELS = 104  # 103 ingredient classes + background
@@ -130,9 +132,12 @@ def main() -> None:
         ).squeeze(1).long().numpy()
         return mean_iou_metrics(preds, labels, NUM_LABELS, ignore_index=255)
 
-    # 4. Training config. Evaluate and checkpoint every epoch, keep the
-    #    best-by-mIoU model at the end (save_total_limit=2 prunes the rest),
-    #    fp16 on GPU for throughput.
+    # 4. Training config. Checkpoint every epoch to output_dir (on Drive) so a
+    #    crashed run resumes from the last epoch instead of restarting; keep the
+    #    best-by-mIoU model at the end (save_total_limit prunes the rest).
+    #    disable_tqdm is deliberate: over a ~9k-step run the per-step progress
+    #    bars flood the Colab cell and can crash the browser tab — we log a line
+    #    every 50 steps instead.
     training_args = TrainingArguments(
         output_dir=args.output,
         learning_rate=args.lr,
@@ -145,6 +150,7 @@ def main() -> None:
         load_best_model_at_end=True,
         metric_for_best_model="mean_iou",
         logging_steps=50,
+        disable_tqdm=True,
         remove_unused_columns=False,
         fp16=torch.cuda.is_available(),
         dataloader_num_workers=8,
@@ -162,7 +168,13 @@ def main() -> None:
         compute_metrics=compute_metrics,
         preprocess_logits_for_metrics=preprocess_logits_for_metrics,
     )
-    trainer.train()
+    # Resume from the last epoch checkpoint if a previous run left one in
+    # output_dir (it lives on Drive, so it survives a runtime/tab crash); else
+    # start fresh. get_last_checkpoint returns None when there's nothing to resume.
+    resume = get_last_checkpoint(args.output) if os.path.isdir(args.output) else None
+    if resume:
+        print(f"resuming from checkpoint: {resume}")
+    trainer.train(resume_from_checkpoint=resume)
     trainer.save_model(args.output)
     # Persist the metric next to the model so reporting never depends on
     # checkpoint dirs surviving (Google Drive's FUSE layer may not sync them,
