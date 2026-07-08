@@ -111,7 +111,14 @@ def main() -> None:
     )
     trainer.train()
     trainer.save_model(args.output)
-    print(trainer.evaluate())
+    # Persist the metric next to the model so reporting never depends on
+    # checkpoint dirs surviving (Google Drive's FUSE layer may not sync them,
+    # and save_total_limit prunes them). save_metrics writes eval_results.json;
+    # save_state writes trainer_state.json (log_history + best_metric).
+    metrics = trainer.evaluate()
+    trainer.save_metrics("eval", metrics)
+    trainer.save_state()
+    print(metrics)
 
 
 if __name__ == "__main__":
