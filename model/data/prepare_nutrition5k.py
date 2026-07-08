@@ -117,6 +117,7 @@ def main() -> None:
 
     rows = []
     skipped = 0
+    unreadable = 0
     for dish_dir in sorted(overhead.iterdir()):
         dish_id = dish_dir.name
         meta = dishes.get(dish_id)
@@ -126,10 +127,19 @@ def main() -> None:
         if meta is None or not rgb.exists() or not depth.exists():
             skipped += 1
             continue
-        # Depth map → metric geometry (plane fit → height field → area/volume).
-        # None means the fit failed (too few valid pixels); also drop trivially
-        # light dishes, whose mass labels are unreliable.
-        geometry = analyze_depth(depth)
+        # A handful of Nutrition5k dishes ship a corrupt/empty capture (e.g.
+        # dish_1564159636's depth_raw.png). Decode both images here and skip the
+        # dish if either fails, so one bad file never aborts the whole extraction
+        # — and so the manifest only ever points training at images it can read
+        # (rgb is validated exactly as mass_regressor_nutrition5k.py loads it).
+        try:
+            geometry = analyze_depth(depth)
+            Image.open(rgb).convert("RGB")
+        except Exception:
+            unreadable += 1
+            continue
+        # None means the depth plane fit failed (too few valid pixels); also drop
+        # trivially light dishes, whose mass labels are unreliable.
         if geometry is None or meta["mass_g"] <= 1:
             skipped += 1
             continue
@@ -151,13 +161,18 @@ def main() -> None:
     # Write the manifest — the one CSV every downstream step reads (fit_priors.py
     # and mass_regressor_nutrition5k.py). Field names come from the first row, so
     # every row must carry the same keys.
+    if not rows:
+        raise SystemExit(
+            f"No usable dishes found ({skipped} skipped, {unreadable} unreadable). "
+            f"Check the staged dataset under {overhead}."
+        )
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         writer.writeheader()
         writer.writerows(rows)
-    print(f"{len(rows)} dishes → {out} ({skipped} skipped)")
+    print(f"{len(rows)} dishes → {out} ({skipped} skipped, {unreadable} unreadable)")
 
 
 if __name__ == "__main__":
