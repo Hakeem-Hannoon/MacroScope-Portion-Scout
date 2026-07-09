@@ -1,4 +1,7 @@
 import type { Classifier, ClassifierResult, Region } from "@ppe/pipeline";
+// The canonical label→FDC map (nutrition/label-map.json), copied next to the DB
+// asset by `npm run build:nutrients`. See docs/REAL_ADAPTERS.md §1.
+import labelMap from "../assets/label-map.json";
 
 /**
  * The foods in the starter bundle (apps/demo/assets/nutrients.sqlite). Until the
@@ -25,34 +28,12 @@ export const STARTER_FOODS: string[] = [
 /**
  * Terse classifier label → bundle description. A real MobileCLIP head emits short
  * labels ("rice", "chicken"); this is the curated map the NutrientStore uses to
- * resolve them (STATUS.md's "quality-critical data artifact"). Extend it as the
- * food vocabulary grows.
+ * resolve them (STATUS.md's "quality-critical data artifact"), loaded from the
+ * shared `nutrition/label-map.json`. `_`-prefixed keys (e.g. `_comment`) are meta.
  */
-export const FOOD_ALIASES: Record<string, string> = {
-  rice: "Rice, white, cooked",
-  "white rice": "Rice, white, cooked",
-  "white rice, cooked": "Rice, white, cooked",
-  chicken: "Chicken breast, cooked, roasted",
-  "chicken breast": "Chicken breast, cooked, roasted",
-  broccoli: "Broccoli, cooked, boiled",
-  egg: "Egg, whole, cooked, hard-boiled",
-  eggs: "Egg, whole, cooked, hard-boiled",
-  salmon: "Salmon, Atlantic, cooked",
-  pasta: "Pasta, cooked, enriched",
-  spaghetti: "Pasta, cooked, enriched",
-  noodles: "Pasta, cooked, enriched",
-  potato: "Potato, baked, flesh and skin",
-  "baked potato": "Potato, baked, flesh and skin",
-  beef: "Ground beef, 85% lean, cooked",
-  "ground beef": "Ground beef, 85% lean, cooked",
-  hamburger: "Ground beef, 85% lean, cooked",
-  banana: "Banana, raw",
-  apple: "Apple, raw, with skin",
-  almonds: "Almonds, raw",
-  almond: "Almonds, raw",
-  bread: "Bread, white, commercial",
-  toast: "Bread, white, commercial",
-};
+export const FOOD_ALIASES: Record<string, string> = Object.fromEntries(
+  Object.entries(labelMap as Record<string, string>).filter(([k]) => !k.startsWith("_")),
+);
 
 /**
  * A `Classifier` whose answer is whatever the UI currently has selected — the

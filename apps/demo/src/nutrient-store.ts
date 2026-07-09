@@ -96,6 +96,7 @@ async function ensureDbCopied(): Promise<void> {
 export class ExpoSqliteNutrientStore implements NutrientStore {
   private db: SQLite.SQLiteDatabase | null = null;
   private globalShape: FoodShape = { ...FALLBACK_SHAPE };
+  private readonly shapeByClass = new Map<string, FoodShape>();
   private hasFts = false;
   /** Curated classifier-label → FDC description/id map ("the quality-critical
    *  data artifact", STATUS.md). A real classifier's terse labels resolve here. */
@@ -116,6 +117,21 @@ export class ExpoSqliteNutrientStore implements NutrientStore {
     this.globalShape = shapeFromPrior(shape ?? null);
     this.db = db;
     return db;
+  }
+
+  /** Per-food shape class (MATH.md §4): resolve a food's class to its own prior,
+   *  falling back to `_global` when the food has no class or the class has no row. */
+  private async shapeForClass(db: SQLite.SQLiteDatabase, cls: string | null): Promise<FoodShape> {
+    if (!cls) return this.globalShape;
+    const cached = this.shapeByClass.get(cls);
+    if (cached) return cached;
+    const row = await db.getFirstAsync<ShapeRow>(
+      "SELECT * FROM shape_priors WHERE class = ?",
+      cls,
+    );
+    const resolved = row ? shapeFromPrior(row) : this.globalShape;
+    this.shapeByClass.set(cls, resolved);
+    return resolved;
   }
 
   async lookup(label: string): Promise<FoodRecord | null> {
@@ -150,6 +166,8 @@ export class ExpoSqliteNutrientStore implements NutrientStore {
         );
       }
     }
-    return row ? toFoodRecord(row, { ...this.globalShape }) : null;
+    if (!row) return null;
+    const shape = await this.shapeForClass(db, (row.shape_class as string | null) ?? null);
+    return toFoodRecord(row, { ...shape });
   }
 }
