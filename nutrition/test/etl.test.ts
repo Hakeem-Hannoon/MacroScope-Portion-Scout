@@ -46,13 +46,14 @@ describe("nutrient bundle ETL", () => {
     bundle.close();
   });
 
-  it("seeds a default _global shape prior matching the pipeline placeholder (MATH.md §4)", () => {
+  it("seeds a default _global shape prior matching the pipeline default (MATH.md §4)", () => {
     const bundle = openBundle(bundlePath); // built above with no priors
     const g = bundle.shapePrior("_global");
     expect(g).not.toBeNull();
     expect(g!.kind).toBe("mound");
-    expect(g!.kappa).toBe(0.55); // == DEFAULT_KAPPA in @ppe/pipeline
-    expect(g!.phi).toBe(0.58); // == DEFAULT_MOUND_PHI
+    expect(g!.kappa).toBe(0.1687); // == DEFAULT_KAPPA in @ppe/pipeline (Nutrition5k fit)
+    expect(g!.phi).toBe(0.446); // == DEFAULT_MOUND_PHI
+    expect(g!.h_bar_m).toBe(0.0979);
     expect(g!.source).toBe("default");
     bundle.close();
   });

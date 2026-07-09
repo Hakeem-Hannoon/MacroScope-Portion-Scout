@@ -27,8 +27,9 @@ const MICRO_COLUMNS = {
   iron100: "ironMg",
 };
 
-/** Used only if the bundle has no shape_priors table (a pre-priors bundle). */
-const FALLBACK_SHAPE = { kind: "mound", kappa: 0.55, phi: 0.58 };
+/** Used only if the bundle has no shape_priors table (a pre-priors bundle);
+ *  the Nutrition5k global fit, matching the pipeline's DEFAULT_KAPPA. */
+const FALLBACK_SHAPE = { kind: "mound", kappa: 0.1687, phi: 0.446, hBarM: 0.0979 };
 /** Water; used only when FDC lists no volumetric portion, so mass = ρV still works. */
 const FALLBACK_DENSITY_G_PER_ML = 1.0;
 

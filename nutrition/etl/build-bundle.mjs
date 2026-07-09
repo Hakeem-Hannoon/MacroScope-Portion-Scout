@@ -53,12 +53,12 @@ const DENSITY_MAX = 2.0;
 const DEFAULT_DATA_TYPES = ["foundation_food", "sr_legacy_food", "survey_fndds_food"];
 
 /**
- * Fallback shape prior when no per-class fit is supplied. Mirrors the pipeline's
- * DEFAULT_KAPPA / DEFAULT_MOUND_PHI (packages/pipeline/src/estimate.ts) so an
- * un-fitted bundle behaves exactly like today's placeholder (MATH.md §4b/§4c);
- * replaced per class by priors.json once notebook 03 finishes.
+ * Default global shape prior when no priors.json is passed — fit from Nutrition5k
+ * (model/priors/fit_priors.py, n=3484). Matches the pipeline's DEFAULT_KAPPA /
+ * DEFAULT_MOUND_PHI (packages/pipeline/src/estimate.ts). Pass --priors to
+ * override, per class (MATH.md §4b/§4c).
  */
-const DEFAULT_GLOBAL_PRIOR = { kind: "mound", kappa: 0.55, phi: 0.58, h_bar_m: null, samples: 0 };
+const DEFAULT_GLOBAL_PRIOR = { kind: "mound", kappa: 0.1687, phi: 0.446, h_bar_m: 0.0979, samples: 3484 };
 
 export function buildBundle({ fdcDir, out, dataTypes = DEFAULT_DATA_TYPES, priors = null }) {
   const read = (name) => csvRecords(readFileSync(join(fdcDir, name), "utf8"));

@@ -55,7 +55,7 @@ const deps = {
         micros: { potassiumMg: 35, sodiumMg: 1 },
       },
       densityGPerMl: 0.67,
-      shape: { kind: "mound", kappa: 0.55 },
+      shape: { kind: "mound", kappa: 0.1687, phi: 0.446 },
     },
   ]),
 };

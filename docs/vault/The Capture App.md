@@ -74,7 +74,7 @@ const payload = await PortionCapture.launch({ requireStroke: true });
 if (!payload) return;                 // cancelled
 setResult(await estimateMeal(payload, deps));   // real geometry, mock models
 ```
-`deps` injects a `CenterSquareSegmenter` (hard‑coded centered square), a `FixedClassifier` ("white rice, cooked"), and an `InMemoryNutrientStore` (rice: density 0.67, κ 0.55). So the demo exercises **real geometry on a placeholder segmentation** — you can cook rice, weigh it, capture with a ≥10 cm stroke, and compare the app's grams to a kitchen scale (the P1 drill).
+`deps` injects a `CenterSquareSegmenter` (hard‑coded centered square), a `FixedClassifier` ("white rice, cooked"), and an `InMemoryNutrientStore` (rice: density 0.67, κ 0.1687). So the demo exercises **real geometry on a placeholder segmentation** — you can cook rice, weigh it, capture with a ≥10 cm stroke, and compare the app's grams to a kitchen scale (the P1 drill).
 
 ## Related
 - [[Math 2 - The Ruler]] · [[System Architecture]] · [[The Pipeline]] · [[Geometry Library]] · [[Testing]] · [[ARCHITECTURE]] · [[HARDWARE]]

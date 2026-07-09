@@ -24,7 +24,7 @@ If a **height** is known (a vertical ruler stroke, or LiDAR max height) but not 
 
 $$V = \varphi_{\text{class}}\cdot A\cdot h$$
 
-$\varphi$ is a **shape fill factor** — how much of the bounding prism the food actually fills: slab/cylinder $\varphi = 1$, dome $\varphi = 2/3$, cone $\varphi = 1/3$, typical food mound ≈ 0.5–0.6. It's *fit from data* (Nutrition5k), not guessed — see [[Shape Priors and Nutrition5k]]. Code: `volumeAreaHeightM3(areaM2, heightM, phi)`, default `DEFAULT_MOUND_PHI = 0.58`. Method flag: `area_height`.
+$\varphi$ is a **shape fill factor** — how much of the bounding prism the food actually fills: slab/cylinder $\varphi = 1$, dome $\varphi = 2/3$, cone $\varphi = 1/3$, typical food mound ≈ 0.5–0.6. It's *fit from data* (Nutrition5k), not guessed — see [[Shape Priors and Nutrition5k]]. Code: `volumeAreaHeightM3(areaM2, heightM, phi)`, default `DEFAULT_MOUND_PHI = 0.446` (Nutrition5k fit). Method flag: `area_height`.
 
 ### Route (c) — shape prior (no height at all)
 
@@ -32,7 +32,7 @@ If only area is known, assume the food is a scaled copy of a canonical per‑cla
 
 $$V = \kappa_{\text{class}}\cdot A^{3/2}$$
 
-Sanity check the exponent: double the *linear* size → area ×4, volume ×8, and indeed $4^{3/2} = 8$. ✓ (This exact relation is unit‑tested — [[Testing]].) For genuinely flat classes (pizza, toast) use $V = A\cdot\bar h_{\text{class}}$ with a fixed thickness prior instead. Both κ and $\bar h$ are **fit offline from Nutrition5k**, not hand‑tuned. Code: `volumeShapePriorM3(areaM2, kappa)`, placeholder `DEFAULT_KAPPA = 0.55` until the fit lands ([[Roadmap and Next Steps]]). Method flag: `shape_prior`.
+Sanity check the exponent: double the *linear* size → area ×4, volume ×8, and indeed $4^{3/2} = 8$. ✓ (This exact relation is unit‑tested — [[Testing]].) For genuinely flat classes (pizza, toast) use $V = A\cdot\bar h_{\text{class}}$ with a fixed thickness prior instead. Both κ and $\bar h$ are **fit offline from Nutrition5k**, not hand‑tuned. Code: `volumeShapePriorM3(areaM2, kappa)`, `DEFAULT_KAPPA = 0.1687` (Nutrition5k fit, n=3484). Method flag: `shape_prior`.
 
 ## Volume → mass: density ([[MATH]] §5)
 

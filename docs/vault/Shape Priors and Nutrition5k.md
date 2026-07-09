@@ -16,7 +16,9 @@ When the app has only a food's **area** (no depth, no height stroke), it still n
 | **φ** (phi) | $V = \varphi A h$ | fill factor: how much of the area×height prism the food actually occupies |
 | **h̄** (h‑bar) | $V = A\bar h$ | typical thickness of flat foods (pizza, toast) |
 
-These feed the `FoodRecord.shape` in [[The Pipeline]] and seed `DEFAULT_KAPPA` (currently a `0.55` placeholder). The whole reason they can be *fit* rather than *guessed*: Nutrition5k provides depth + mass ground truth for thousands of real dishes.
+These feed the `FoodRecord.shape` in [[The Pipeline]] and set `DEFAULT_KAPPA` (fit at **0.1687**, replacing the old 0.55 placeholder). The whole reason they can be *fit* rather than *guessed*: Nutrition5k provides depth + mass ground truth for thousands of real dishes.
+
+> **The global fit (n=3,484 dishes):** κ = **0.1687**, φ = **0.446**, h̄ = **0.0979 m**. Committed as `model/priors/priors.json` and wired into `@ppe/pipeline` + the nutrient bundle's `shape_priors`. (κ ≈ 0.17 means a 100 cm² mound is ~170 mL — about 1.7 cm average height — vs. the old placeholder's unrealistic ~550 mL.)
 
 ## Nutrition5k, the dataset
 
@@ -42,7 +44,7 @@ Runs on a laptop in seconds over the manifest. For each food class (or one globa
 - **h̄** — the median of $h_{\max}$: a typical thickness for the flat‑food route.
 
 Degenerate rows (near‑zero area/volume/height, i.e. failed depth fits) are dropped first, and classes with too few dishes are skipped. Output is `priors.json`, which:
-- replaces `DEFAULT_KAPPA = 0.55` in `@ppe/pipeline` ([[The Pipeline]]), and
+- set `DEFAULT_KAPPA` in `@ppe/pipeline` (now **0.1687**, [[The Pipeline]]), and
 - seeds `nutrition/`'s planned `shape_priors` table ([[Nutrition Database]]).
 
 Wiring these fitted values in is the **highest‑value next step** ([[Roadmap and Next Steps]] item 1).

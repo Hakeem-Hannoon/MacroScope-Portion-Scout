@@ -31,7 +31,7 @@ Worked from the fixtures: rice, 1 cup → 158 g → $158 / (236.588\times1) =$ *
 
 ## The SQLite schema (what actually ships)
 
-Four tables. **`foods`** (PRIMARY KEY `fdc_id`): `description`, `data_type`, the `*100` nutrient columns (`kcal100`, `protein100`, …, `iron100`), plus `density_g_per_ml` and `density_source` (both nullable). **`shape_priors`** (`class, kind, kappa, phi, h_bar_m, samples, source`): κ/φ/h̄ per class ([[Math 4 - Volume Mass and Nutrients]]), seeded from `priors.json` when built with `--priors`, else a single mound `_global` default matching the pipeline placeholder. **`meta`** records `generated_at`, `data_types`, `fts`, `source`. And a **full‑text search** index `foods_fts` (SQLite FTS5, external‑content over `description`) — wrapped in a try/catch so builds without fts5 fall back to `LIKE`. `openBundle()` is the low‑level reader (`get`, `getByDescription`, `search`, `shapePrior`, `count`).
+Four tables. **`foods`** (PRIMARY KEY `fdc_id`): `description`, `data_type`, the `*100` nutrient columns (`kcal100`, `protein100`, …, `iron100`), plus `density_g_per_ml` and `density_source` (both nullable). **`shape_priors`** (`class, kind, kappa, phi, h_bar_m, samples, source`): κ/φ/h̄ per class ([[Math 4 - Volume Mass and Nutrients]]), seeded from `priors.json` when built with `--priors`, else a single mound `_global` default (the Nutrition5k fit: κ=0.1687, φ=0.446, h̄=0.098 m). **`meta`** records `generated_at`, `data_types`, `fts`, `source`. And a **full‑text search** index `foods_fts` (SQLite FTS5, external‑content over `description`) — wrapped in a try/catch so builds without fts5 fall back to `LIKE`. `openBundle()` is the low‑level reader (`get`, `getByDescription`, `search`, `shapePrior`, `count`).
 
 ## The CLI
 

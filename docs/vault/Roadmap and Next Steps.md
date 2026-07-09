@@ -23,15 +23,15 @@ Be the portion‑estimation engine for **Spotter** meal logging, and stand alone
 
 ## 🟡 In progress / waiting on
 
-- **SegFormer fine‑tune (notebook 02)** — training on an A100; waiting on final mIoU (target ≥ 0.25 B0 / ≥ 0.32 B1). → [[Segmentation Model]]
-- **Nutrition5k manifest + priors (notebook 03)** — dataset staged; extraction running; waiting on `priors.json` to replace `DEFAULT_KAPPA = 0.55`. → [[Shape Priors and Nutrition5k]]
+- ✅ **SegFormer fine‑tune (notebook 02)** — done: **mIoU 0.246** (nvidia/mit‑b0), right at the ~0.25 target and vs. ≤ 0.05 for every public checkpoint. → [[Segmentation Model]]
+- ✅ **Nutrition5k manifest + priors (notebook 03)** — manifest extracted (3,484 dishes) and `priors.json` fit + wired in (κ=0.1687). → [[Shape Priors and Nutrition5k]]
 - **Mass regressor (notebook 03)** — needs a GPU runtime; waiting on calorie MAPE vs. the 26.1% / 16.5% baselines. → [[Mass Regressor Model]]
 - **P0 / P1 physical drills** — ruler vs. tape measure; geometry‑only mass vs. kitchen scale. → [[Testing]]
 - **Screenshots** — README image slots awaiting device upload.
 
 ## ⬜ Next (ordered)
 
-1. **Wire the fitted priors** — drop κ/φ/h̄ from `priors.json` into [[The Pipeline]] (`DEFAULT_KAPPA` + per‑class) and [[Nutrition Database]]'s `shape_priors`. *Smallest, highest‑value step; unblocks the moment notebook 03 finishes.*
+1. ✅ **Wire the fitted priors — done.** The Nutrition5k global fit (κ=0.1687, φ=0.446, h̄=0.098 m, n=3484) is now `DEFAULT_KAPPA`/`DEFAULT_MOUND_PHI` in [[The Pipeline]], the ETL's default `shape_priors`, and committed as `model/priors/priors.json`. Per‑class κ/φ await per‑class labels.
 2. **iOS capture parity** — port the reticle + plate‑trackpad + stabilization from Android to the Swift module; run P0 on iPhone. iPhone Pro also unlocks the LiDAR height‑field volume route. → [[The Capture App]]
 3. **Real model adapters** — replace the mocks: `Segmenter` (SAM 2.1‑tiny Core ML / SegFormer via ExecuTorch), `Classifier` (MobileCLIP zero‑shot), `DepthProvider` (LiDAR). De‑risk the Android ExecuTorch custom‑model path first. → [[Segmentation Model]]
 4. **On‑device nutrient bundle** — run the ETL over real FDC CSVs, ship the SQLite as an asset, implement `NutrientStore` over expo‑sqlite, and curate the **label → FDC‑row** mapping (the quality‑critical artifact). → [[Nutrition Database]]

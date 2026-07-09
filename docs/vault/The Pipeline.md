@@ -72,13 +72,13 @@ else:
 ## The constants to know
 
 ```ts
-DEFAULT_KAPPA = 0.55      // placeholder V=κA^1.5 mound constant until the Nutrition5k fit lands
-DEFAULT_MOUND_PHI = 0.58  // fill factor for area×height on a typical mound
+DEFAULT_KAPPA = 0.1687    // V=κA^1.5 mound constant, fit from Nutrition5k (n=3484)
+DEFAULT_MOUND_PHI = 0.446 // area×height fill factor, same fit
 LOW_CONFIDENCE = 0.5      // below this → low_confidence flag
 ATWATER_TOLERANCE = 0.15  // >15% deviation → atwater_mismatch flag
 ```
 
-`DEFAULT_KAPPA = 0.55` is the single most important placeholder in the codebase — it's replaced by the fitted value from [[Shape Priors and Nutrition5k]] as the top of [[Roadmap and Next Steps]].
+`DEFAULT_KAPPA = 0.1687` and `DEFAULT_MOUND_PHI = 0.446` are the Nutrition5k **global fit** ([[Shape Priors and Nutrition5k]], n=3484), which replaced the earlier 0.55/0.58 placeholders. They're the fallback when a food has no per-class shape; per-class κ/φ/h̄ ride in the bundle's `shape_priors` ([[Nutrition Database]]).
 
 ## Editing an estimate (propose → confirm)
 

@@ -25,10 +25,11 @@ describe("SqliteNutrientStore", () => {
     expect(rec!.per100.micros!.potassiumMg).toBe(35);
     // density derived from the cup portion (MATH.md §5)
     expect(rec!.densityGPerMl).toBeCloseTo(0.668, 2);
-    // shape = the default _global mound prior (== the pipeline placeholder)
+    // shape = the default _global mound prior (the Nutrition5k fit, n=3484)
     expect(rec!.shape.kind).toBe("mound");
-    expect(rec!.shape.kappa).toBe(0.55);
-    expect(rec!.shape.phi).toBe(0.58);
+    expect(rec!.shape.kappa).toBe(0.1687);
+    expect(rec!.shape.phi).toBe(0.446);
+    expect(rec!.shape.hBarM).toBe(0.0979);
     store.close();
   });
 

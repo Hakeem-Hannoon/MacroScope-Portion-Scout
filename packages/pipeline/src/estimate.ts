@@ -47,9 +47,14 @@ export interface EstimateDeps {
   depth?: DepthProvider;
 }
 
-/** Placeholder mound constant until the Nutrition5k prior fit lands (model/). */
-export const DEFAULT_KAPPA = 0.55;
-const DEFAULT_MOUND_PHI = 0.58;
+/**
+ * Global mound shape priors fit from Nutrition5k (model/priors/fit_priors.py,
+ * n=3484 dishes): κ in V = κ·A^1.5, and the area×height fill factor φ. These are
+ * the fallbacks when a food has no per-class shape; per-class κ/φ/h̄ ride in the
+ * nutrient bundle's shape_priors table (see nutrition/).
+ */
+export const DEFAULT_KAPPA = 0.1687;
+const DEFAULT_MOUND_PHI = 0.446;
 const LOW_CONFIDENCE = 0.5;
 const ATWATER_TOLERANCE = 0.15;
 
