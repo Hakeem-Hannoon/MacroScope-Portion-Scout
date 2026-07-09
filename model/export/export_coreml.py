@@ -21,9 +21,15 @@ import torch
 
 
 def export_segformer(checkpoint: str, out: str, size: int) -> None:
-    from transformers import SegformerForSemanticSegmentation
+    from transformers import SegformerConfig, SegformerForSemanticSegmentation
 
-    model = SegformerForSemanticSegmentation.from_pretrained(checkpoint, torchscript=True)
+    # torchscript=True makes the model traceable (tuple outputs, no attention
+    # dicts). Current transformers no longer accepts it as a from_pretrained
+    # kwarg — it forwards unknown kwargs to __init__, which rejects it — so set
+    # it on the config instead.
+    config = SegformerConfig.from_pretrained(checkpoint)
+    config.torchscript = True
+    model = SegformerForSemanticSegmentation.from_pretrained(checkpoint, config=config)
     model.eval()
 
     class Wrapper(torch.nn.Module):
