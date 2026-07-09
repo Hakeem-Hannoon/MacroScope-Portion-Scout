@@ -79,7 +79,7 @@ class MealRegionDataset(Dataset):
         image = Image.open(row.image_path).convert("RGB").resize(
             (self.image_size, self.image_size)
         )
-        x = torch.from_numpy(np.asarray(image)).permute(2, 0, 1).float() / 255.0
+        x = torch.from_numpy(np.array(image)).permute(2, 0, 1).float() / 255.0
         # Horizontal flip is the ONLY safe augmentation here — a plate has no
         # canonical left/right, but vertical flips or rotations would fight the
         # fixed overhead geometry the conditioning encodes.
@@ -142,7 +142,12 @@ class ScaleConditionedMassRegressor(nn.Module):
     def __init__(self, backbone: str = "mobilenetv3_large_100"):
         super().__init__()
         self.backbone = timm.create_model(backbone, pretrained=True, num_classes=0)
-        feature_dim = self.backbone.num_features
+        # Size FiLM/head from the backbone's ACTUAL pooled-feature width, not
+        # backbone.num_features — they differ on some nets (MobileNetV3 reports
+        # 960 there, but forward() returns the 1280-d post-conv_head features, so
+        # FiLM's γ/β wouldn't match). A dummy forward measures it for any backbone.
+        with torch.no_grad():
+            feature_dim = self.backbone(torch.zeros(1, 3, 224, 224)).shape[1]
         self.film = FiLM(COND_DIM, feature_dim)
         # Shared head: mass and kcal ride the same modulated features and only
         # split at the final Linear, so the kcal output is a cheap auxiliary task
