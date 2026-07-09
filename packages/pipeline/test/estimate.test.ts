@@ -112,6 +112,16 @@ describe("estimateMeal", () => {
     expect(result.quality.camera_height_m).toBeCloseTo(0.45, 3);
   });
 
+  it("accepts a free-surface capture where plane.extent is null (no locked plane)", async () => {
+    // The native module sends JSON `null` for extent when it measured without a
+    // locked support plane. Zod's `.optional()` rejects null with "Expected
+    // array, received null", which failed real on-device captures; `.nullish()`
+    // accepts it. This guards that regression.
+    const payload = makePayload({ plane: { normal: [0, 1, 0], d0: 0, extent: null } });
+    const result = await estimateMeal(payload, deps);
+    expect(result.items.length).toBeGreaterThan(0);
+  });
+
   it("uses a vertical stroke as measured height and tightens the budget", async () => {
     const payload = makePayload({
       strokes: [

@@ -18,7 +18,7 @@ export interface CapturePayload {
   image_size: [number, number];
   intrinsics: number[][];
   camera_to_world: number[];
-  plane: { normal: [number, number, number]; d0: number; extent?: [number, number] };
+  plane: { normal: [number, number, number]; d0: number; extent?: [number, number] | null };
   strokes: CaptureStroke[];
   depth: {
     map: string;

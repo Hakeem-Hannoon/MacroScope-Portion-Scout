@@ -40,7 +40,12 @@ export const capturePayloadSchema = z.object({
   plane: z.object({
     normal: vec3,
     d0: z.number(),
-    extent: z.tuple([z.number(), z.number()]).optional(),
+    // The native module emits JSON `null` here when no support plane is locked
+    // (free-surface measuring — the capture module deliberately does NOT gate on
+    // table detection). `.optional()` alone rejects null ("Expected array,
+    // received null") and broke real captures, so accept null as well as absent.
+    // Not consumed downstream — informational only (plane size when known).
+    extent: z.tuple([z.number(), z.number()]).nullish(),
   }),
   strokes: z.array(strokeSchema).max(8),
   /** LiDAR/scene depth at capture time; null on devices without it. */
