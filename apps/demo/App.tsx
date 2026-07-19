@@ -80,11 +80,14 @@ export default function App() {
       setStatus("Segmenting → classifying → weighing…");
       const r = await estimateMeal(payload, deps);
       setResult(r);
-      const first = r.items[0];
+      const n = r.items.length;
+      const err = `±${Math.round(r.quality.est_relative_error * 100)}%`;
       setStatus(
-        first
-          ? `Predicted “${first.label}” — ±${Math.round(r.quality.est_relative_error * 100)}%`
-          : "No food region found — try again, food centered",
+        n === 0
+          ? "No food regions found — try again, plate in frame"
+          : n === 1
+            ? `Predicted “${r.items[0]!.label}” — ${err}`
+            : `Predicted ${n} ingredients · ${r.totals.kcal} kcal total — ${err}`,
       );
     } catch (error) {
       setStatus(`Failed: ${error instanceof Error ? error.message : String(error)}`);

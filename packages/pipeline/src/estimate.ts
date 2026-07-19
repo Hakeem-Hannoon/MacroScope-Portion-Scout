@@ -181,9 +181,16 @@ export async function estimateMeal(
     });
   }
 
+  // Collapse to one item per food. Class-agnostic "segment everything" emits
+  // several overlapping masks for one ingredient (a pot roast → 6 "beef"
+  // regions); summing them would multiply its mass. Keep the largest-area mask
+  // per label — the most complete footprint — and drop the rest. Distinct foods
+  // keep distinct labels and all survive.
+  const collapsed = collapseByLabel(items);
+
   const result: EstimateResult = {
-    items,
-    totals: sumTotals(items),
+    items: collapsed,
+    totals: sumTotals(collapsed),
     quality: {
       scale_source: payload.scale_source,
       ruler_residual_mm: residualM !== null ? round(residualM * 1000, 2) : null,
@@ -232,6 +239,20 @@ function buildMatchedItem(
     micros,
     flags,
   };
+}
+
+/**
+ * One item per label, keeping the largest-area mask of each food. SAM's grid
+ * proposes many overlapping masks per ingredient; without this the totals would
+ * count a single food several times over. Preserves first-seen order.
+ */
+function collapseByLabel(items: EstimateItem[]): EstimateItem[] {
+  const best = new Map<string, EstimateItem>();
+  for (const item of items) {
+    const prev = best.get(item.label);
+    if (!prev || item.geometry.area_cm2 > prev.geometry.area_cm2) best.set(item.label, item);
+  }
+  return [...best.values()];
 }
 
 function sumTotals(items: EstimateItem[]): EstimateResult["totals"] {

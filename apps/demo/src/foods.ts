@@ -2,28 +2,20 @@ import type { Classifier, ClassifierResult, Region } from "@ppe/pipeline";
 // The canonical label→FDC map (nutrition/label-map.json), copied next to the DB
 // asset by `npm run build:nutrients`. See docs/REAL_ADAPTERS.md §1.
 import labelMap from "../assets/label-map.json";
+// The on-device classifier vocabulary (assets/food-vocab-embeddings.json) — the
+// common FoodSeg103 subset. Its terse labels resolve to FDC rows via labelMap.
+import vocabDoc from "../assets/food-vocab-embeddings.json";
 
 /**
- * The foods in the starter bundle (apps/demo/assets/nutrients.sqlite). Until the
- * on-device classifier (MobileCLIP) is wired — see vision-adapters.ts — the demo
- * lets the user pick which of these the plate is, so the estimate uses REAL USDA
- * nutrition for the REAL measured portion. These strings are the exact bundle
- * descriptions, so the store resolves them by exact match.
+ * Every food the classifier can name — the terse vocabulary labels, used for the
+ * propose→confirm correction chips so the user can relabel a region to any known
+ * food (each resolves to REAL USDA nutrition via labelMap + the starter bundle).
+ * Kept in sync with the model automatically: it's the same vocabulary the image
+ * encoder is matched against (nutrition/starter/foods.mjs is the source of both).
  */
-export const STARTER_FOODS: string[] = [
-  "Rice, white, cooked",
-  "Chicken breast, cooked, roasted",
-  "Broccoli, cooked, boiled",
-  "Egg, whole, cooked, hard-boiled",
-  "Salmon, Atlantic, cooked",
-  "Pasta, cooked, enriched",
-  "Potato, baked, flesh and skin",
-  "Ground beef, 85% lean, cooked",
-  "Banana, raw",
-  "Apple, raw, with skin",
-  "Almonds, raw",
-  "Bread, white, commercial",
-];
+export const STARTER_FOODS: string[] = (
+  vocabDoc as { vocab: { label: string }[] }
+).vocab.map((v) => v.label);
 
 /**
  * Terse classifier label → bundle description. A real MobileCLIP head emits short

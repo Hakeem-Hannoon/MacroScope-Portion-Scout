@@ -13,11 +13,14 @@
 import { writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { FOODS } from "../../../nutrition/starter/foods.mjs";
 
 const MODEL = "Xenova/mobileclip_s0";
 const CTX = 77; // MobileCLIP fixed text context length — pad to this or the graph errors
-// Terse labels the NutrientStore resolves to USDA FDC rows via nutrition/label-map.json.
-const VOCAB = ["rice", "chicken", "broccoli", "egg", "salmon", "pasta", "potato", "beef", "banana", "apple", "almonds", "bread"];
+// The shared food set (nutrition/starter/foods.mjs) — a common subset of
+// FoodSeg103. Each vocab word is what the classifier emits; the NutrientStore
+// resolves it to a USDA FDC row via nutrition/label-map.json (same source).
+const VOCAB = FOODS.map((f) => f.vocab);
 const TEMPLATES = ["a photo of {}", "a photo of {} on a plate", "a close-up photo of {}", "{}"];
 const OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "assets", "food-vocab-embeddings.json");
 
