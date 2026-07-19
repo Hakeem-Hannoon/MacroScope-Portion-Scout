@@ -13,6 +13,7 @@ import {
   type EstimateResult,
   estimateMeal,
   relabelItem,
+  rescaleItemToMass,
   withEditedItem,
 } from "@ppe/pipeline";
 import { ExpoSqliteNutrientStore } from "./src/nutrient-store";
@@ -104,6 +105,16 @@ export default function App() {
     setResult(withEditedItem(result, index, relabelItem(result.items[index]!, record, label)));
   };
 
+  // Propose→confirm: correct the portion. Nutrition is linear in mass, so the
+  // edit is an exact rescale; the measured geometry is kept (the user corrects
+  // the grams, not the measurement).
+  const adjustMass = (index: number, deltaG: number) => {
+    if (!result) return;
+    const item = result.items[index]!;
+    const next = Math.max(0, (item.mass_g ?? 0) + deltaG);
+    setResult(withEditedItem(result, index, rescaleItemToMass(item, next)));
+  };
+
   const pct = (x: number) => `${Math.round(x * 100)}%`;
 
   return (
@@ -150,9 +161,20 @@ export default function App() {
               <Text style={styles.muted}>
                 {item.geometry.area_cm2} cm² · {item.geometry.volume_ml} mL · {item.geometry.method}
               </Text>
-              <Text style={styles.mass}>
-                {item.mass_g ?? "?"} g · {item.kcal ?? "?"} kcal
-              </Text>
+              <View style={styles.portionRow}>
+                <Pressable
+                  onPress={() => adjustMass(i, -10)}
+                  disabled={(item.mass_g ?? 0) <= 0}
+                  style={[styles.stepBtn, (item.mass_g ?? 0) <= 0 && styles.stepBtnDisabled]}>
+                  <Text style={styles.stepText}>−10 g</Text>
+                </Pressable>
+                <Text style={styles.mass}>
+                  {item.mass_g ?? "?"} g · {item.kcal ?? "?"} kcal
+                </Text>
+                <Pressable onPress={() => adjustMass(i, 10)} style={styles.stepBtn}>
+                  <Text style={styles.stepText}>+10 g</Text>
+                </Pressable>
+              </View>
               <Text style={styles.muted}>
                 P {item.protein_g ?? "?"} · C {item.carbs_g ?? "?"} · F {item.fat_g ?? "?"}
               </Text>
@@ -221,6 +243,15 @@ const styles = StyleSheet.create({
   rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   label: { fontWeight: "700", fontSize: 16 },
   mass: { fontWeight: "600", fontSize: 15 },
+  portionRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  stepBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: "#e2e2e2",
+  },
+  stepBtnDisabled: { opacity: 0.4 },
+  stepText: { color: "#333", fontWeight: "600", fontSize: 13 },
   flags: { color: "#a15c00", fontSize: 12 },
   correct: { marginTop: 6, fontSize: 12, color: "#888" },
   chip: {
