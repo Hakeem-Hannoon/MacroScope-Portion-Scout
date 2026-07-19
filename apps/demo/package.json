@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "main": "expo/AppEntry.js",
+  "expo": {
+    "autolinking": {
+      "nativeModulesDir": "../../modules"
+    }
+  },
   "scripts": {
     "start": "expo start --dev-client",
     "ios": "expo run:ios",
@@ -16,6 +21,7 @@
     "@ppe/pipeline": "file:../../packages/pipeline",
     "expo": "~53.0.0",
     "expo-asset": "~11.1.7",
+    "expo-build-properties": "~0.14.8",
     "expo-constants": "~17.1.8",
     "expo-file-system": "~18.1.11",
     "expo-font": "~13.3.2",

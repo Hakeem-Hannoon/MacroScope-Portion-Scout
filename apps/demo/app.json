@@ -4,6 +4,7 @@
     "slug": "ppe-demo",
     "version": "0.1.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "ios": {
       "bundleIdentifier": "com.spotterlabs.ppedemo",
       "infoPlist": {
@@ -15,7 +16,16 @@
     },
     "plugins": [
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      "./plugins/with-fmt-xcode26-fix.js",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "16.0"
+          }
+        }
+      ]
     ]
   }
 }
